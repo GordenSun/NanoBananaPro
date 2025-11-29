@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>Nano Banana Pro · Art Edition</title>
+  <style>
+    :root {
+      --bg-dark: #0f0f13;
+      --glass: rgba(30, 30, 35, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent: #d4af37; /* 香槟金 */
+      --accent-glow: rgba(212, 175, 55, 0.4);
+      --text-main: #e0e0e0;
+      --text-muted: #888;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      margin: 0;
+      color: var(--text-main);
+      background-color: var(--bg-dark);
+      /* 艺术感动态背景 */
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(60, 20, 80, 0.4) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(20, 60, 80, 0.4) 0%, transparent 40%);
+      background-attachment: fixed;
+      font-family: "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+      height: 100vh;
+      overflow: hidden; /* PC端整页不滚动，各区域独立滚动 */
+    }
+
+    @media (max-width: 900px) {
+      body { height: auto; overflow: auto; padding-bottom: 40px; }
+    }
+
+    /* 布局容器 */
+    .app-container {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      height: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .app-container { grid-template-columns: 1fr; height: auto; display: block; padding: 16px; }
+    }
+
+    /* 左侧控制台 */
+    .panel-control {
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      height: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    @media (max-width: 900px) {
+      .panel-control { height: auto; margin-bottom: 20px; }
+    }
+
+    /* 标题区 */
+    header {
+      margin-bottom: 8px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 12px;
+    }
+    h1 {
+      margin: 0; font-size: 20px; font-weight: 300; letter-spacing: 2px;
+      background: linear-gradient(90deg, #fff, #bbb);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .author-info { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+    .author-highlight { color: var(--accent); cursor: pointer; }
+
+    /* 表单组件通用 */
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
+    
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: 0.3s;
+    }
+    textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+      background: rgba(0,0,0,0.5);
+    }
+
+    /* 紧凑配置行 */
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* 图片上传区 */
+    .drop-zone {
+      border: 1px dashed var(--glass-border);
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+    .drop-zone:hover { border-color: var(--text-muted); background: rgba(0,0,0,0.4); }
+    .drop-text { font-size: 12px; color: var(--text-muted); }
+    
+    .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .thumb { width: 48px; height: 48px; border-radius: 6px; overflow: hidden; position: relative; border: 1px solid var(--glass-border); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb .del {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.6); color: #fff;
+      display: flex; align-items: center; justify-content: center; opacity: 0;
+      cursor: pointer; font-size: 12px; transition: 0.2s;
+    }
+    .thumb:hover .del { opacity: 1; }
+
+    /* 按钮 */
+    .btn-main {
+      background: linear-gradient(135deg, var(--accent), #b89628);
+      color: #1a1a1a;
+      border: none;
+      height: 44px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px var(--accent-glow);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 16px var(--accent-glow); filter: brightness(1.1); }
+    .btn-main:active { transform: translateY(1px); }
+    .btn-main[disabled] { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; }
+
+    /* Key 输入区 */
+    .key-section { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+    .key-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.4; }
+    .key-input-row { display: flex; gap: 6px; }
+    .btn-sm { 
+      padding: 0 14px; 
+      height: 34px; 
+      font-size: 12px; 
+      background: rgba(255,255,255,0.1); 
+      border: 1px solid var(--glass-border); 
+      color: #ccc; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      white-space: nowrap; 
+      flex-shrink: 0;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.2); }
+
+    /* 状态条 */
+    .status-bar { font-size: 12px; text-align: center; color: var(--accent); min-height: 18px; margin-top: -8px; }
+
+    /* 右侧画廊 */
+    .panel-gallery {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px; 
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 结果卡片 */
+    .result-group { margin-bottom: 24px; animation: fadeIn 0.5s ease; }
+    .result-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .result-meta::before { content:''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+    
+    /* 核心修改区域：图片布局 */
+    .grid-imgs {
+      display: flex;       
+      flex-wrap: wrap;     
+      gap: 16px;           
+      align-items: flex-start;
+    }
+    
+    .img-card {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      height: 280px;       /* 固定高度：PC端 */
+      width: auto;         /* 宽度自适应 */
+      background: #000;
+      border: 1px solid var(--glass-border);
+      transition: 0.3s;
+      flex-shrink: 0;      
+    }
+
+    @media (max-width: 600px) {
+      .img-card {
+        height: 180px; /* 手机端高度 */
+      }
+    }
+
+    .img-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-color: var(--text-muted); }
+    
+    .img-card img { 
+      height: 100%;        
+      width: auto;         
+      object-fit: contain; 
+      display: block;
+    }
+    
+    .img-card img.error { padding: 40px; object-fit: contain; opacity: 0.5; filter: grayscale(1); }
+
+    .overlay-actions {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 16px 12px 12px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      opacity: 1; 
+    }
+    
+    .btn-icon { background: rgba(255,255,255,0.25); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .btn-icon:hover { background: var(--accent); color: #000; }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(5px);
+      display: none; flex-direction: column;
+    }
+    .lightbox.show { display: flex; }
+    .lb-header { padding: 16px; display: flex; justify-content: space-between; color: #888; font-size: 14px; }
+    .lb-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: hidden; }
+    .lb-main img { max-width: 100%; max-height: 100%; box-shadow: 0 0 50px rgba(0,0,0,0.8); object-fit: contain; }
+    .lb-footer { padding: 20px; display: flex; justify-content: center; gap: 20px; }
+    .lb-btn { background: transparent; border: 1px solid #444; color: #ccc; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition:0.2s; user-select: none; }
+    .lb-btn:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,0.1); }
+    .lb-btn.primary { border-color: var(--accent); color: var(--accent); }
+    .lb-btn.primary:hover { background: var(--accent); color: #000; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .spinner { 
+      width: 16px; height: 16px; 
+      border: 2px solid rgba(0,0,0,0.1); border-top-color: #000; 
+      border-radius: 50%; 
+      animation: spin 0.8s linear infinite; 
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <aside class="panel-control">
+    <header>
+      <h1>NANO BANANA PRO</h1>
+      <div class="author-info">
+        <span>Art Edition</span>
+        <span>作者: Gorden Sun <span class="author-highlight" onclick="copyWx()">微信: duge360</span></span>
+      </div>
+    </header>
+
+    <div>
+      <label>创意描述 (Prompt)</label>
+      <textarea id="prompt" placeholder="描述你想象中的画面... (支持中英文)"></textarea>
+    </div>
+
+    <div class="config-grid">
+      <div>
+        <label>画幅比例</label>
+        <select id="ratioSelect">
+          <option value="auto">auto</option>
+          <option value="1:1">1:1</option>
+          <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
+          <option value="4:3">4:3</option>
+          <option value="3:4">3:4</option>
+          <option value="3:2">3:2</option>
+          <option value="2:3">2:3</option>
+          <option value="5:4">5:4</option>
+          <option value="4:5">4:5</option>
+          <option value="21:9">21:9</option>
+        </select>
+      </div>
+      <div>
+        <label>分辨率</label>
+        <select id="sizeSelect">
+          <option value="1K">1K 标准</option>
+          <option value="2K">2K 高清</option>
+          <option value="4K" selected>4K 超清</option> </select>
+      </div>
+    </div>
+
+    <div>
+      <label>参考底图 (可选)</label>
+      <div class="drop-zone" id="drop">
+        <span class="drop-text">点击或拖拽上传图片</span>
+        <input id="file" type="file" accept="image/*" multiple hidden>
+      </div>
+      <div id="thumbs" class="thumbs"></div>
+    </div>
+
+    <div class="key-section">
+      <div class="key-label">第3步：输入Key (必填，联系作者微信 <b>duge360</b> 购买，0.15元/次，价格可能变动)</div>
+      <div class="key-input-row">
+        <input type="text" id="userKey" placeholder="sk-..." style="height:34px;">
+        <button class="btn-sm" id="saveKey">保存</button>
+      </div>
+    </div>
+
+    <div class="status-bar" id="status"></div>
+
+    <button class="btn-main" id="go">
+      <span class="spinner" id="spin"></span>
+      <span id="btnText">生成</span>
+    </button>
+  </aside>
+
+  <main class="panel-gallery" id="gallery">
+    </main>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lb-header">
+    <span id="lbInfo">Preview</span>
+    <span style="cursor:pointer" id="lbClose">✕ 关闭</span>
+  </div>
+  <div class="lb-main">
+    <img id="lbImg" src="" crossorigin="anonymous">
+  </div>
+  <div class="lb-footer">
+    <button class="lb-btn" id="lbPrev">← 前一张</button>
+    <button class="lb-btn primary" id="lbDownBtn">↓ 下载原图</button>
+    <button class="lb-btn" id="lbNext">后一张 →</button>
+  </div>
+</div>
+
+<script>
+;(() => {
+  // ====== 配置与常量 ======
+  
+  // 🔴 🔴 🔴 已配置为您的公开域名 🔴 🔴 🔴
+  const PUBLIC_R2_DOMAIN = 'https://cdn.gordensun.com/bananaproimage'; 
+  
+  const ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/nano-banana';
+  const MODEL = 'nano-banana-pro';
+  
+  // 独立缓存 Keys (nb_art)
+  const STORE_KEY = 'nb_art:key';
+  const STORE_RATIO = 'nb_art:ratio';
+  const STORE_SIZE = 'nb_art:size';
+
+  // ====== DOM 元素 ======
+  const el = (id) => document.getElementById(id);
+  const ui = {
+    prompt: el('prompt'),
+    ratio: el('ratioSelect'),
+    size: el('sizeSelect'),
+    key: el('userKey'),
+    saveKey: el('saveKey'),
+    drop: el('drop'),
+    fileInput: el('file'),
+    thumbs: el('thumbs'),
+    go: el('go'),
+    btnText: el('btnText'),
+    spin: el('spin'),
+    status: el('status'),
+    gallery: el('gallery'),
+    lb: el('lightbox'),
+    lbMain: document.querySelector('.lb-main'),
+    lbImg: el('lbImg'),
+    lbInfo: el('lbInfo'),
+    lbDownBtn: el('lbDownBtn'),
+    lbPrev: el('lbPrev'),
+    lbNext: el('lbNext'),
+    lbClose: el('lbClose')
+  };
+
+  let refImages = []; // 参考图数据
+  let currentLbUrl = ''; // 当前大图URL
+  let currentImgIndex = -1; // 当前大图在所有图片中的索引
+
+  // ====== 初始化：加载缓存 ======
+  ui.key.value = localStorage.getItem(STORE_KEY) || '';
+  if(localStorage.getItem(STORE_RATIO)) ui.ratio.value = localStorage.getItem(STORE_RATIO);
+  
+  // 分辨率初始化：优先缓存，无缓存则默认 4K
+  ui.size.value = localStorage.getItem(STORE_SIZE) || '4K';
+
+  // 监听保存
+  ui.saveKey.onclick = () => {
+    localStorage.setItem(STORE_KEY, ui.key.value.trim());
+    msg('Key 已保存');
+  };
+  ui.ratio.onchange = () => localStorage.setItem(STORE_RATIO, ui.ratio.value);
+  ui.size.onchange = () => localStorage.setItem(STORE_SIZE, ui.size.value);
+
+  // ====== 交互逻辑：文件上传 ======
+  ui.drop.onclick = () => ui.fileInput.click();
+  ui.fileInput.onchange = (e) => handleFiles(e.target.files);
+  
+  // 拖拽支持
+  ui.drop.ondragover = (e) => { e.preventDefault(); ui.drop.style.background = 'rgba(212,175,55,0.2)'; };
+  ui.drop.ondragleave = (e) => { e.preventDefault(); ui.drop.style.background = ''; };
+  ui.drop.ondrop = (e) => {
+    e.preventDefault();
+    ui.drop.style.background = '';
+    handleFiles(e.dataTransfer.files);
+  };
+
+  async function handleFiles(files) {
+    const list = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if(!list.length) return;
+    if(refImages.length + list.length > 5) return msg('最多上传 5 张参考图', true);
+    
+    for(let f of list) {
+      const b64 = await toBase64(f);
+      refImages.push(b64);
+    }
+    renderThumbs();
+  }
+
+  function renderThumbs() {
+    ui.thumbs.innerHTML = refImages.map((src, i) => `
+      <div class="thumb">
+        <img src="${src}">
+        <div class="del" onclick="removeThumb(${i})">✕</div>
+      </div>
+    `).join('');
+  }
+  window.removeThumb = (i) => { refImages.splice(i, 1); renderThumbs(); };
+
+  // ====== 域名修正函数 (智能处理路径) ======
+  function fixR2Url(rawUrl) {
+    if (!rawUrl) return '';
+    if (!PUBLIC_R2_DOMAIN) return rawUrl;
+    
+    try {
+        const u = new URL(rawUrl);
+        if (u.hostname.includes('r2.cloudflarestorage.com')) {
+            let path = u.pathname;
+            if (path.startsWith('/bananaproimage/')) {
+                path = path.replace('/bananaproimage/', '/');
+            }
+            const domain = PUBLIC_R2_DOMAIN.replace(/\/$/, '');
+            return domain + path;
+        }
+    } catch(e) { console.error('URL replace error', e); }
+    return rawUrl;
+  }
+
+  // ====== 核心：生成请求 (SSE流式) ======
+  ui.go.onclick = async () => {
+    const prompt = ui.prompt.value.trim();
+    const key = ui.key.value.trim();
+    
+    if(!prompt) return msg('请输入一些描述...', true);
+    if(!key) return msg('请填写 Key', true);
+
+    setLoading(true);
+    msg('连接艺术引擎...');
+
+    try {
+      const payload = {
+        model: MODEL,
+        prompt: prompt,
+        aspectRatio: ui.ratio.value,
+        imageSize: ui.size.value,
+        urls: refImages.length ? refImages : undefined,
+        shutProgress: false 
+      };
+
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': 'Bearer ' + key,
+          'oss-id': '692b1ce0469719c8c4c5af05',
+          'oss-path': 'bananaproimage'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let resultUrls = [];
+      let isSuccess = false;
+
+      while(true) {
+        const { done, value } = await reader.read();
+        if(done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); 
+
+        for(let line of lines) {
+          line = line.trim();
+          if(!line.startsWith('data:')) continue;
+          
+          try {
+            const json = JSON.parse(line.substring(5).trim());
+            
+            if(json.status === 'running') {
+              msg(`绘制中... ${json.progress || ''}%`);
+            } else if(json.status === 'failed') {
+              throw new Error(json.failure_reason || json.error || '绘制失败');
+            } else if(json.status === 'succeeded' && json.results) {
+              json.results.forEach(r => { 
+                  if(r.url) {
+                      const fixed = fixR2Url(r.url);
+                      resultUrls.push(fixed);
+                  }
+              });
+              isSuccess = true;
+            }
+          } catch(e) { /* ignore */ }
+        }
+      }
+
+      if(isSuccess && resultUrls.length) {
+        msg('创作完成');
+        addGalleryGroup(resultUrls, prompt);
+      } else {
+        throw new Error('未收到画作数据');
+      }
+
+    } catch(err) {
+      console.error(err);
+      msg('错误: ' + (err.message || '未知错误'), true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====== 界面更新 ======
+  function setLoading(ing) {
+    if(ing) {
+      ui.go.disabled = true;
+      ui.spin.style.display = 'inline-block';
+      ui.btnText.textContent = '正在绘制...';
+    } else {
+      ui.go.disabled = false;
+      ui.spin.style.display = 'none';
+      ui.btnText.textContent = '生成';
+    }
+  }
+
+  function msg(txt, err=false) {
+    ui.status.textContent = txt;
+    ui.status.style.color = err ? '#ff6b6b' : 'var(--accent)';
+  }
+
+  function addGalleryGroup(urls, prompt) {
+    const time = new Date().toLocaleTimeString();
+    const groupHtml = `
+      <div class="result-group">
+        <div class="result-meta">
+          <span>${time}</span>
+          <span style="opacity:0.6; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${prompt}</span>
+        </div>
+        <div class="grid-imgs">
+          ${urls.map((url, i) => `
+            <div class="img-card" onclick="openLightbox('${url}')">
+              <img src="${url}" loading="lazy" crossorigin="anonymous" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PGxpbmUgeDE9IjEyIiB5MT0iOCIgeDI9IjEyIiB5Mj0iMTIiLz48bGluZSB4MT0iMTIiIHkxPSIxNiIgeDI9IjEyLjAxIiB5Mj0iMTYiLz48L3N2Zz4=';this.className+=' error'">
+              <div class="overlay-actions">
+                <button class="btn-icon" onclick="event.stopPropagation(); download('${url}')">↓</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    ui.gallery.insertAdjacentHTML('afterbegin', groupHtml);
+  }
+
+  // ====== Lightbox 逻辑优化 (支持跨批次切换与键盘) ======
+  
+  // 获取当前页面所有图片元素（DOM顺序）
+  function getAllImages() {
+    return Array.from(document.querySelectorAll('.panel-gallery .img-card img'));
+  }
+
+  // 打开大图
+  window.openLightbox = (url) => {
+    const imgs = getAllImages();
+    // 查找当前图片索引（根据src匹配）
+    currentImgIndex = imgs.findIndex(img => img.src === url);
+    updateLightboxImage();
+    ui.lb.classList.add('show');
+  };
+
+  // 刷新大图显示
+  function updateLightboxImage() {
+    const imgs = getAllImages();
+    if(currentImgIndex < 0 || currentImgIndex >= imgs.length) return;
+    
+    const imgObj = imgs[currentImgIndex];
+    currentLbUrl = imgObj.src;
+    ui.lbImg.src = currentLbUrl;
+    ui.lbInfo.textContent = `Preview (${currentImgIndex + 1} / ${imgs.length})`;
+  }
+
+  // 切换逻辑
+  function prevImage() {
+    const imgs = getAllImages();
+    if (currentImgIndex > 0) {
+      currentImgIndex--;
+      updateLightboxImage();
+    }
+  }
+
+  function nextImage() {
+    const imgs = getAllImages();
+    if (currentImgIndex < imgs.length - 1) {
+      currentImgIndex++;
+      updateLightboxImage();
+    }
+  }
+
+  // 关闭逻辑
+  function closeLightbox() {
+    ui.lb.classList.remove('show');
+  }
+
+  // 事件绑定: 按钮
+  ui.lbPrev.onclick = (e) => { e.stopPropagation(); prevImage(); };
+  ui.lbNext.onclick = (e) => { e.stopPropagation(); nextImage(); };
+  ui.lbClose.onclick = closeLightbox;
+  ui.lbDownBtn.onclick = () => { if(currentLbUrl) download(currentLbUrl); };
+
+  // 事件绑定: 智能点击空白关闭
+  ui.lb.onclick = (e) => {
+    // 如果点击的是背景层(ui.lb)、主容器(lbMain)、或头部底部，而非图片本身和按钮
+    // 简单判断: 只要不是 IMG 或 BUTTON 标签，就可以认为是空白区域
+    const tag = e.target.tagName;
+    if (tag !== 'IMG' && tag !== 'BUTTON') {
+      closeLightbox();
+    }
+  };
+
+  // 事件绑定: 键盘 (Esc, Left, Right)
+  document.addEventListener('keydown', (e) => {
+    if (!ui.lb.classList.contains('show')) return;
+    
+    switch(e.key) {
+      case 'Escape': closeLightbox(); break;
+      case 'ArrowLeft': prevImage(); break;
+      case 'ArrowRight': nextImage(); break;
+    }
+  });
+
+  // 下载功能
+  window.download = async (url) => {
+    msg('正在下载原图...');
+    try {
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('Network error');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `art-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      msg('下载已触发');
+    } catch(e) {
+      console.warn('Fallback to link', e);
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.download = `art-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      msg('已在新窗口打开');
+    }
+  };
+
+  window.copyWx = () => {
+    navigator.clipboard.writeText('duge360');
+    msg('微信号已复制');
+  };
+
+  const toBase64 = file => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+})();
+</script>
+</body>
+</html>
