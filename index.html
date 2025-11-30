@@ -6,13 +6,14 @@
   <title>Nano Banana Pro · Art Edition</title>
   <style>
     :root {
-      --bg-dark: #0f0f13;
+      /* 修改：背景色稍微调亮，更柔和 */
+      --bg-dark: #5F2E2E; 
       --glass: rgba(30, 30, 35, 0.75);
       --glass-border: rgba(255, 255, 255, 0.08);
       --accent: #d4af37; /* 香槟金 */
       --accent-glow: rgba(212, 175, 55, 0.4);
       --text-main: #e0e0e0;
-      --text-muted: #888;
+      --text-muted: #999; /* 稍微提亮灰色文字 */
       --radius: 16px;
     }
 
@@ -22,21 +23,23 @@
       margin: 0;
       color: var(--text-main);
       background-color: var(--bg-dark);
-      /* 艺术感动态背景 */
+      
+      /* 修改：增加斜向网格线装饰 */
       background-image: 
         radial-gradient(circle at 10% 20%, rgba(60, 20, 80, 0.4) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(20, 60, 80, 0.4) 0%, transparent 40%);
+        radial-gradient(circle at 90% 80%, rgba(20, 60, 80, 0.4) 0%, transparent 40%),
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 30px);
+        
       background-attachment: fixed;
       font-family: "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
       height: 100vh;
-      overflow: hidden; /* PC端整页不滚动，各区域独立滚动 */
+      overflow: hidden; 
     }
 
     @media (max-width: 900px) {
       body { height: auto; overflow: auto; padding-bottom: 40px; }
     }
 
-    /* 布局容器 */
     .app-container {
       display: grid;
       grid-template-columns: 380px 1fr;
@@ -51,17 +54,16 @@
       .app-container { grid-template-columns: 1fr; height: auto; display: block; padding: 16px; }
     }
 
-    /* 左侧控制台 */
     .panel-control {
       background: var(--glass);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 24px; /* 稍微增加内边距 */
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px; /* 增加间距 */
       overflow-y: auto;
       height: 100%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
@@ -71,23 +73,32 @@
       .panel-control { height: auto; margin-bottom: 20px; }
     }
 
-    /* 标题区 */
     header {
       margin-bottom: 8px;
       border-bottom: 1px solid var(--glass-border);
       padding-bottom: 12px;
     }
     h1 {
-      margin: 0; font-size: 20px; font-weight: 300; letter-spacing: 2px;
+      margin: 0; 
+      font-size: 22px; /* 增大标题 */
+      font-weight: 300; 
+      letter-spacing: 2px;
       background: linear-gradient(90deg, #fff, #bbb);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .author-info { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+    .author-info { 
+      font-size: 13px; /* 增大作者信息 */
+      color: var(--text-muted); 
+      margin-top: 6px; 
+      display: flex; 
+      justify-content: space-between; 
+    }
     .author-highlight { color: var(--accent); cursor: pointer; }
 
-    /* 表单组件通用 */
-    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
+    /* 修改：增大 Label 字体 */
+    label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
     
+    /* 修改：增大输入框字体 */
     input[type="text"], textarea, select {
       width: 100%;
       background: rgba(0,0,0,0.3);
@@ -95,7 +106,7 @@
       color: #fff;
       border-radius: 8px;
       padding: 10px 12px;
-      font-size: 14px;
+      font-size: 15px; /* 14px -> 15px */
       outline: none;
       transition: 0.3s;
     }
@@ -106,29 +117,27 @@
       background: rgba(0,0,0,0.5);
     }
 
-    /* 紧凑配置行 */
     .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-    /* 图片上传区 */
     .drop-zone {
       border: 1px dashed var(--glass-border);
       background: rgba(0,0,0,0.2);
       border-radius: 8px;
-      padding: 12px;
+      padding: 14px;
       text-align: center;
       transition: 0.3s;
       cursor: pointer;
     }
     .drop-zone:hover { border-color: var(--text-muted); background: rgba(0,0,0,0.4); }
-    .drop-text { font-size: 12px; color: var(--text-muted); }
+    .drop-text { font-size: 13px; color: var(--text-muted); } /* 增大 */
     
     .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .thumb { width: 48px; height: 48px; border-radius: 6px; overflow: hidden; position: relative; border: 1px solid var(--glass-border); }
+    .thumb { width: 50px; height: 50px; border-radius: 6px; overflow: hidden; position: relative; border: 1px solid var(--glass-border); }
     .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .thumb .del {
       position: absolute; inset: 0; background: rgba(0,0,0,0.6); color: #fff;
       display: flex; align-items: center; justify-content: center; opacity: 0;
-      cursor: pointer; font-size: 12px; transition: 0.2s;
+      cursor: pointer; font-size: 14px; transition: 0.2s;
     }
     .thumb:hover .del { opacity: 1; }
 
@@ -137,10 +146,10 @@
       background: linear-gradient(135deg, var(--accent), #b89628);
       color: #1a1a1a;
       border: none;
-      height: 44px;
+      height: 46px; /* 稍微增高 */
       border-radius: 8px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 16px; /* 增大按钮文字 */
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -153,14 +162,13 @@
     .btn-main:active { transform: translateY(1px); }
     .btn-main[disabled] { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; }
 
-    /* Key 输入区 */
-    .key-section { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
-    .key-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.4; }
+    .key-section { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; }
+    .key-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.4; } /* 增大 */
     .key-input-row { display: flex; gap: 6px; }
     .btn-sm { 
       padding: 0 14px; 
       height: 34px; 
-      font-size: 12px; 
+      font-size: 13px; /* 增大 */
       background: rgba(255,255,255,0.1); 
       border: 1px solid var(--glass-border); 
       color: #ccc; 
@@ -171,10 +179,8 @@
     }
     .btn-sm:hover { background: rgba(255,255,255,0.2); }
 
-    /* 状态条 */
-    .status-bar { font-size: 12px; text-align: center; color: var(--accent); min-height: 18px; margin-top: -8px; }
+    .status-bar { font-size: 13px; text-align: center; color: var(--accent); min-height: 20px; margin-top: -6px; } /* 增大 */
 
-    /* 右侧画廊 */
     .panel-gallery {
       flex: 1;
       overflow-y: auto;
@@ -184,12 +190,10 @@
       gap: 20px;
     }
 
-    /* 结果卡片 */
     .result-group { margin-bottom: 24px; animation: fadeIn 0.5s ease; }
-    .result-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .result-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; } /* 增大 */
     .result-meta::before { content:''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
     
-    /* 核心修改区域：图片布局 */
     .grid-imgs {
       display: flex;       
       flex-wrap: wrap;     
@@ -201,8 +205,8 @@
       position: relative;
       border-radius: 12px;
       overflow: hidden;
-      height: 280px;       /* 固定高度：PC端 */
-      width: auto;         /* 宽度自适应 */
+      height: 280px;
+      width: auto;
       background: #000;
       border: 1px solid var(--glass-border);
       transition: 0.3s;
@@ -211,7 +215,7 @@
 
     @media (max-width: 600px) {
       .img-card {
-        height: 180px; /* 手机端高度 */
+        height: 180px; 
       }
     }
 
@@ -234,16 +238,14 @@
       opacity: 1; 
     }
     
-    .btn-icon { background: rgba(255,255,255,0.25); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .btn-icon { background: rgba(255,255,255,0.25); border:none; color:#fff; width:34px; height:34px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
     .btn-icon:hover { background: var(--accent); color: #000; }
 
-    /* 滚动条美化 */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-    /* Lightbox */
     .lightbox {
       position: fixed; inset: 0; z-index: 100;
       background: rgba(0,0,0,0.92);
@@ -251,11 +253,11 @@
       display: none; flex-direction: column;
     }
     .lightbox.show { display: flex; }
-    .lb-header { padding: 16px; display: flex; justify-content: space-between; color: #888; font-size: 14px; }
+    .lb-header { padding: 16px; display: flex; justify-content: space-between; color: #888; font-size: 15px; } /* 增大 */
     .lb-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: hidden; }
     .lb-main img { max-width: 100%; max-height: 100%; box-shadow: 0 0 50px rgba(0,0,0,0.8); object-fit: contain; }
     .lb-footer { padding: 20px; display: flex; justify-content: center; gap: 20px; }
-    .lb-btn { background: transparent; border: 1px solid #444; color: #ccc; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition:0.2s; user-select: none; }
+    .lb-btn { background: transparent; border: 1px solid #444; color: #ccc; padding: 8px 18px; border-radius: 20px; cursor: pointer; transition:0.2s; user-select: none; font-size: 14px; }
     .lb-btn:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,0.1); }
     .lb-btn.primary { border-color: var(--accent); color: var(--accent); }
     .lb-btn.primary:hover { background: var(--accent); color: #000; }
@@ -264,7 +266,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     
     .spinner { 
-      width: 16px; height: 16px; 
+      width: 18px; height: 18px; 
       border: 2px solid rgba(0,0,0,0.1); border-top-color: #000; 
       border-radius: 50%; 
       animation: spin 0.8s linear infinite; 
