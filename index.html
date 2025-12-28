@@ -805,7 +805,7 @@
         <div>
           <label>模型</label>
           <select id="modelSelect">
-            <option value="nano-banana-pro">更稳定</option>
+            <option value="nano-banana-pro" selected>更稳定</option>
             <option value="nano-banana-pro-vt">更高质量</option>
           </select>
         </div>
@@ -849,6 +849,7 @@
         <div class="key-input-row">
           <input type="text" id="userKey" placeholder="sk-..." style="height:34px;">
           <button class="btn-sm" id="saveKey">保存</button>
+          <button class="btn-sm" id="queryCredits">查询剩余</button>
         </div>
       </div>
 
@@ -933,6 +934,7 @@
         size: el('sizeSelect'),
         key: el('userKey'),
         saveKey: el('saveKey'),
+        queryCredits: el('queryCredits'),
         drop: el('drop'),
         fileInput: el('file'),
         thumbs: el('thumbs'),
@@ -973,6 +975,31 @@
       ui.saveKey.onclick = () => {
         localStorage.setItem(STORE_KEY, ui.key.value.trim());
         msg('Key 已保存');
+      };
+
+      // 查询剩余次数
+      ui.queryCredits.onclick = async () => {
+        const key = ui.key.value.trim();
+        if (!key) return msg('请先填写 Key', true);
+
+        msg('正在查询剩余次数...');
+        try {
+          const res = await fetch('https://grsai.dakka.com.cn/client/openapi/getAPIKeyCredits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: key })
+          });
+          const data = await res.json();
+          if (data.code === 0 && data.data && typeof data.data.credits === 'number') {
+            const credits = data.data.credits;
+            const remainingUses = Math.floor(credits / 1800);
+            msg(`剩余次数: ${remainingUses} 次`);
+          } else {
+            msg('查询失败: ' + (data.msg || '未知错误'), true);
+          }
+        } catch (e) {
+          msg('查询失败: ' + e.message, true);
+        }
       };
       ui.ratio.onchange = () => localStorage.setItem(STORE_RATIO, ui.ratio.value);
       ui.size.onchange = () => localStorage.setItem(STORE_SIZE, ui.size.value);
