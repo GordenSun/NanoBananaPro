@@ -1022,7 +1022,7 @@
       async function handleFiles(files) {
         const list = Array.from(files).filter(f => f.type.startsWith('image/'));
         if (!list.length) return;
-        if (refImages.length + list.length > 5) return msg('最多上传 5 张参考图', true);
+        if (refImages.length + list.length > 8) return msg('最多上传 8 张参考图', true);
 
         for (let f of list) {
           const b64 = await toBase64(f);
