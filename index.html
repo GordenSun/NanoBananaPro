@@ -139,7 +139,7 @@
     textarea,
     select {
       width: 100%;
-      background: rgba(0, 0, 0, 0.3);
+      background-color: rgba(0, 0, 0, 0.3);
       border: 1px solid var(--glass-border);
       color: #fff;
       border-radius: 8px;
@@ -147,7 +147,17 @@
       font-size: 15px;
       /* 14px -> 15px */
       outline: none;
-      transition: 0.3s;
+      transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+    }
+
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
     }
 
     textarea {
@@ -161,7 +171,7 @@
     select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
-      background: rgba(0, 0, 0, 0.5);
+      background-color: rgba(0, 0, 0, 0.5);
     }
 
     .config-grid {
@@ -174,6 +184,22 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
+    }
+
+    .inline-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .inline-row label {
+      margin-bottom: 0;
+      flex-shrink: 0;
+      width: 72px;
+    }
+
+    .inline-row select {
+      flex: 1;
     }
 
     .drop-zone {
@@ -243,7 +269,9 @@
       background: linear-gradient(135deg, var(--accent), #b89628);
       color: #1a1a1a;
       border: none;
+      flex-shrink: 0;
       height: 46px;
+      min-height: 46px;
       /* 稍微增高 */
       border-radius: 8px;
       font-weight: 700;
@@ -801,39 +829,38 @@
         <textarea id="prompt" placeholder="输入图片描述，支持中英文"></textarea>
       </div>
 
-      <div class="config-grid-3">
-        <div>
-          <label>模型</label>
-          <select id="modelSelect">
-            <option value="nano-banana-pro" selected>更稳定</option>
-            <option value="nano-banana-pro-vt">备用</option>
-            <option value="nano-banana-2">Banana2</option>
-          </select>
-        </div>
-        <div>
-          <label>画幅比例</label>
-          <select id="ratioSelect">
-            <option value="auto">自动</option>
-            <option value="1:1">1:1</option>
-            <option value="16:9">16:9</option>
-            <option value="9:16">9:16</option>
-            <option value="4:3">4:3</option>
-            <option value="3:4">3:4</option>
-            <option value="3:2">3:2</option>
-            <option value="2:3">2:3</option>
-            <option value="5:4">5:4</option>
-            <option value="4:5">4:5</option>
-            <option value="21:9">21:9</option>
-          </select>
-        </div>
-        <div>
-          <label>分辨率</label>
-          <select id="sizeSelect">
-            <option value="1K">1K 标准</option>
-            <option value="2K">2K 高清</option>
-            <option value="4K" selected>4K 超清</option>
-          </select>
-        </div>
+      <div class="inline-row">
+        <label>模型</label>
+        <select id="modelSelect">
+          <option value="nano-banana-pro" selected>Banana Pro(每次180积分)</option>
+          <option value="nano-banana-pro-vt">Banana Pro备用(每次180积分)</option>
+          <option value="nano-banana-2">Banana 2(每次120积分)</option>
+          <option value="gpt-image-2">GPT Image 2(每次60积分)</option>
+        </select>
+      </div>
+      <div class="inline-row">
+        <label>画幅比例</label>
+        <select id="ratioSelect">
+          <option value="auto">自动</option>
+          <option value="1:1">1:1</option>
+          <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
+          <option value="4:3">4:3</option>
+          <option value="3:4">3:4</option>
+          <option value="3:2">3:2</option>
+          <option value="2:3">2:3</option>
+          <option value="5:4">5:4</option>
+          <option value="4:5">4:5</option>
+          <option value="21:9">21:9</option>
+        </select>
+      </div>
+      <div class="inline-row">
+        <label>分辨率</label>
+        <select id="sizeSelect">
+          <option value="1K">1K 标准</option>
+          <option value="2K">2K 高清</option>
+          <option value="4K" selected>4K 超清</option>
+        </select>
       </div>
 
       <div>
@@ -846,7 +873,7 @@
       </div>
 
       <div class="key-section">
-        <div class="key-label">第3步：输入Key (必填，联系作者微信 <b>duge360</b> 购买，0.3元/次，价格可能变动)</div>
+        <div class="key-label">第3步：输入Key (必填，联系作者微信 <b>duge360</b> 购买，GPT-Image-2 0.1元/次，价格可能变动)</div>
         <div class="key-input-row">
           <input type="text" id="userKey" placeholder="sk-..." style="height:34px;">
           <button class="btn-sm" id="saveKey">保存</button>
@@ -907,8 +934,9 @@
       // 🔴 🔴 🔴 已配置为您的公开域名 🔴 🔴 🔴
       const PUBLIC_R2_DOMAIN = 'https://cdn.gordensun.com/bananaproimage';
 
-      // API 端点 (统一使用同一个接口，模型通过 payload 指定)
+      // API 端点 (nano-banana 系列 与 gpt-image-2 使用不同接口)
       const ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/nano-banana';
+      const GPT_IMAGE_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/completions';
       const RESULT_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/result';
 
       // 独立缓存 Keys (grsai_pro)
@@ -993,8 +1021,8 @@
           const data = await res.json();
           if (data.code === 0 && data.data && typeof data.data.credits === 'number') {
             const credits = data.data.credits;
-            const remainingUses = Math.floor(credits / 1800);
-            msg(`剩余次数: ${remainingUses} 次`);
+            const remainingPoints = credits / 10;
+            msg(`剩余积分: ${remainingPoints}`);
           } else {
             msg('查询失败: ' + (data.msg || '未知错误'), true);
           }
@@ -1004,7 +1032,23 @@
       };
       ui.ratio.onchange = () => localStorage.setItem(STORE_RATIO, ui.ratio.value);
       ui.size.onchange = () => localStorage.setItem(STORE_SIZE, ui.size.value);
-      ui.model.onchange = () => localStorage.setItem(STORE_MODEL, ui.model.value);
+      ui.model.onchange = () => {
+        localStorage.setItem(STORE_MODEL, ui.model.value);
+        updateSizeAvailability();
+      };
+
+      function updateSizeAvailability() {
+        const isGptImage = ui.model.value === 'gpt-image-2';
+        if (isGptImage) {
+          ui.size.value = '1K';
+        } else {
+          ui.size.value = localStorage.getItem(STORE_SIZE) || '4K';
+        }
+        ui.size.disabled = isGptImage;
+        ui.size.style.opacity = isGptImage ? '0.4' : '';
+        ui.size.style.cursor = isGptImage ? 'not-allowed' : '';
+      }
+      updateSizeAvailability();
 
       // ====== 交互逻辑：文件上传 ======
       ui.drop.onclick = () => ui.fileInput.click();
@@ -1040,6 +1084,16 @@
     `).join('');
       }
       window.removeThumb = (i) => { refImages.splice(i, 1); renderThumbs(); };
+
+      // ====== 读取图片尺寸 ======
+      function getImageDimensions(src) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = reject;
+          img.src = src;
+        });
+      }
 
       // ====== 域名修正函数 (智能处理路径) ======
       function fixR2Url(rawUrl) {
@@ -1329,17 +1383,41 @@
         msg('正在提交生成任务...');
 
         try {
-          const payload = {
-            model: model,
-            prompt: prompt,
-            aspectRatio: ui.ratio.value,
-            imageSize: ui.size.value,
-            urls: refImages.length ? refImages : undefined,
-            webHook: "-1",  // 异步模式：返回任务ID
-            shutProgress: true
-          };
+          const isGptImage = model === 'gpt-image-2';
 
-          const res = await fetch(ENDPOINT, {
+          let gptImageSize = 'auto';
+          if (isGptImage && refImages.length > 0) {
+            try {
+              const dims = await getImageDimensions(refImages[0]);
+              gptImageSize = `${dims.width}:${dims.height}`;
+            } catch (e) {
+              console.warn('读取参考图尺寸失败，使用 auto', e);
+            }
+          }
+
+          const payload = isGptImage
+            ? {
+                model: model,
+                prompt: prompt,
+                size: gptImageSize,
+                variants: 1,
+                urls: refImages.length ? refImages : undefined,
+                webHook: "-1",
+                shutProgress: true
+              }
+            : {
+                model: model,
+                prompt: prompt,
+                aspectRatio: ui.ratio.value,
+                imageSize: ui.size.value,
+                urls: refImages.length ? refImages : undefined,
+                webHook: "-1",
+                shutProgress: true
+              };
+
+          const endpoint = isGptImage ? GPT_IMAGE_ENDPOINT : ENDPOINT;
+
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
