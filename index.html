@@ -1385,8 +1385,8 @@
         try {
           const isGptImage = model === 'gpt-image-2';
 
-          let gptImageSize = 'auto';
-          if (isGptImage && refImages.length > 0) {
+          let gptImageSize = ui.ratio.value;
+          if (isGptImage && gptImageSize === 'auto' && refImages.length > 0) {
             try {
               const dims = await getImageDimensions(refImages[0]);
               gptImageSize = `${dims.width}:${dims.height}`;
