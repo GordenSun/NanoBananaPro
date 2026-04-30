@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="zh-CN">
 
@@ -836,6 +837,7 @@
           <option value="nano-banana-pro-vt">Banana Pro备用(每次180积分)</option>
           <option value="nano-banana-2">Banana 2(每次120积分)</option>
           <option value="gpt-image-2">GPT Image 2(每次60积分)</option>
+          <option value="gpt-image-2-vip">4K版 GPT Image 2(每次90积分)</option>
         </select>
       </div>
       <div class="inline-row">
@@ -1035,20 +1037,52 @@
       ui.model.onchange = () => {
         localStorage.setItem(STORE_MODEL, ui.model.value);
         updateSizeAvailability();
+        updateRatioAvailability(true);
       };
 
       function updateSizeAvailability() {
-        const isGptImage = ui.model.value === 'gpt-image-2';
+        const model = ui.model.value;
+        const isGptImage = model === 'gpt-image-2';
+        const isGptImageVip = model === 'gpt-image-2-vip';
         if (isGptImage) {
           ui.size.value = '1K';
+        } else if (isGptImageVip) {
+          ui.size.value = '4K';
         } else {
           ui.size.value = localStorage.getItem(STORE_SIZE) || '4K';
         }
-        ui.size.disabled = isGptImage;
-        ui.size.style.opacity = isGptImage ? '0.4' : '';
-        ui.size.style.cursor = isGptImage ? 'not-allowed' : '';
+        const lockSize = isGptImage || isGptImageVip;
+        ui.size.disabled = lockSize;
+        ui.size.style.opacity = lockSize ? '0.4' : '';
+        ui.size.style.cursor = lockSize ? 'not-allowed' : '';
       }
       updateSizeAvailability();
+
+      // VIP 模型下控制 auto 选项可见性：无参考图时隐藏 auto，有参考图时可选
+      function updateRatioAvailability(switchToAuto = false) {
+        const isGptImageVip = ui.model.value === 'gpt-image-2-vip';
+        const hasRefImage = refImages.length > 0;
+        const autoOption = ui.ratio.querySelector('option[value="auto"]');
+        if (!autoOption) return;
+
+        const hideAuto = isGptImageVip && !hasRefImage;
+
+        autoOption.hidden = hideAuto;
+        autoOption.disabled = hideAuto;
+        autoOption.style.display = hideAuto ? 'none' : '';
+
+        if (hideAuto && ui.ratio.value === 'auto') {
+          const firstOpt = ui.ratio.querySelector('option:not([value="auto"])');
+          if (firstOpt) {
+            ui.ratio.value = firstOpt.value;
+            localStorage.setItem(STORE_RATIO, ui.ratio.value);
+          }
+        } else if (!hideAuto && switchToAuto && isGptImageVip && hasRefImage) {
+          ui.ratio.value = 'auto';
+          localStorage.setItem(STORE_RATIO, ui.ratio.value);
+        }
+      }
+      updateRatioAvailability();
 
       // ====== 交互逻辑：文件上传 ======
       ui.drop.onclick = () => ui.fileInput.click();
@@ -1068,11 +1102,13 @@
         if (!list.length) return;
         if (refImages.length + list.length > 8) return msg('最多上传 8 张参考图', true);
 
+        const wasEmpty = refImages.length === 0;
         for (let f of list) {
           const b64 = await toBase64(f);
           refImages.push(b64);
         }
         renderThumbs();
+        updateRatioAvailability(wasEmpty);
       }
 
       function renderThumbs() {
@@ -1083,7 +1119,7 @@
       </div>
     `).join('');
       }
-      window.removeThumb = (i) => { refImages.splice(i, 1); renderThumbs(); };
+      window.removeThumb = (i) => { refImages.splice(i, 1); renderThumbs(); updateRatioAvailability(); };
 
       // ====== 读取图片尺寸 ======
       function getImageDimensions(src) {
@@ -1093,6 +1129,72 @@
           img.onerror = reject;
           img.src = src;
         });
+      }
+
+      // 将较长边缩放到指定值，另一边按比例缩放
+      function scaleLongerSideTo(w, h, target) {
+        if (w >= h) {
+          return { w: target, h: Math.round(h * target / w) };
+        }
+        return { w: Math.round(w * target / h), h: target };
+      }
+
+      // 4K 版 GPT Image 2 的 size 计算：基于 aspectRatio 字符串(形如 "3840:2160")
+      // 输出 "WxH" 像素值，需满足：
+      //   - 最长边 ≤ 3840
+      //   - 两边均为 16 的倍数
+      //   - 长短边比例 ≤ 3:1
+      //   - 总像素 ∈ [655360, 8294400]
+      function compute4KSize(ratioStr) {
+        if (!ratioStr || typeof ratioStr !== 'string' || !ratioStr.includes(':')) return ratioStr;
+        const parts = ratioStr.split(':');
+        const a = parseFloat(parts[0]);
+        const b = parseFloat(parts[1]);
+        if (!(a > 0) || !(b > 0)) return ratioStr;
+
+        const MAX_EDGE = 3840;
+        const STEP = 16;
+        const MAX_RATIO = 3;
+        const MIN_PIXELS = 655360;
+        const MAX_PIXELS = 8294400;
+
+        const landscape = a >= b;
+        const lr = Math.max(a, b);
+        const sr = Math.min(a, b);
+        const r = Math.min(lr / sr, MAX_RATIO);
+
+        let longE = Math.min(MAX_EDGE, Math.sqrt(MAX_PIXELS * r));
+        let shortE = longE / r;
+        longE = Math.floor(longE / STEP) * STEP;
+        shortE = Math.floor(shortE / STEP) * STEP;
+        if (longE < STEP) longE = STEP;
+        if (shortE < STEP) shortE = STEP;
+
+        while (longE * shortE < MIN_PIXELS) {
+          let bumped = false;
+          if (longE + STEP <= MAX_EDGE && (longE + STEP) * shortE <= MAX_PIXELS) {
+            longE += STEP;
+            bumped = true;
+          } else if (shortE + STEP <= longE && longE * (shortE + STEP) <= MAX_PIXELS) {
+            shortE += STEP;
+            bumped = true;
+          }
+          if (!bumped) break;
+        }
+
+        while (longE * shortE > MAX_PIXELS) {
+          if (longE >= shortE) longE -= STEP; else shortE -= STEP;
+          if (longE < STEP || shortE < STEP) break;
+        }
+
+        while (longE / shortE > MAX_RATIO) {
+          longE -= STEP;
+          if (longE < STEP) break;
+        }
+
+        const W = landscape ? longE : shortE;
+        const H = landscape ? shortE : longE;
+        return `${W}x${H}`;
       }
 
       // ====== 域名修正函数 (智能处理路径) ======
@@ -1383,10 +1485,32 @@
         msg('正在提交生成任务...');
 
         try {
-          const isGptImage = model === 'gpt-image-2';
+          const isGptImageVip = model === 'gpt-image-2-vip';
+          const isGptImage = model === 'gpt-image-2' || isGptImageVip;
 
           let gptImageSize = ui.ratio.value;
-          if (isGptImage && gptImageSize === 'auto' && refImages.length > 0) {
+          if (isGptImageVip) {
+            // 4K 版：将较长一边缩放为 3840，另一边等比缩放
+            if (gptImageSize === 'auto' && refImages.length > 0) {
+              try {
+                const dims = await getImageDimensions(refImages[0]);
+                const scaled = scaleLongerSideTo(dims.width, dims.height, 3840);
+                gptImageSize = `${scaled.w}:${scaled.h}`;
+              } catch (e) {
+                console.warn('读取参考图尺寸失败，使用 auto', e);
+              }
+            } else if (gptImageSize !== 'auto') {
+              const parts = gptImageSize.split(':');
+              if (parts.length === 2) {
+                const w = parseFloat(parts[0]);
+                const h = parseFloat(parts[1]);
+                if (w > 0 && h > 0) {
+                  const scaled = scaleLongerSideTo(w, h, 3840);
+                  gptImageSize = `${scaled.w}:${scaled.h}`;
+                }
+              }
+            }
+          } else if (isGptImage && gptImageSize === 'auto' && refImages.length > 0) {
             try {
               const dims = await getImageDimensions(refImages[0]);
               gptImageSize = `${dims.width}:${dims.height}`;
@@ -1396,15 +1520,27 @@
           }
 
           const payload = isGptImage
-            ? {
-                model: model,
-                prompt: prompt,
-                size: gptImageSize,
-                variants: 1,
-                urls: refImages.length ? refImages : undefined,
-                webHook: "-1",
-                shutProgress: true
-              }
+            ? (isGptImageVip
+                ? {
+                    model: model,
+                    prompt: prompt,
+                    aspectRatio: compute4KSize(gptImageSize),
+                    // size: compute4KSize(gptImageSize),
+                    variants: 1,
+                    quality: 'high',
+                    urls: refImages.length ? refImages : undefined,
+                    webHook: "-1",
+                    shutProgress: true
+                  }
+                : {
+                    model: model,
+                    prompt: prompt,
+                    size: gptImageSize,
+                    variants: 1,
+                    urls: refImages.length ? refImages : undefined,
+                    webHook: "-1",
+                    shutProgress: true
+                  })
             : {
                 model: model,
                 prompt: prompt,
