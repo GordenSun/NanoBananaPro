@@ -1097,6 +1097,32 @@
         handleFiles(e.dataTransfer.files);
       };
 
+      // 全局粘贴：输入框聚焦时走默认（粘贴文本到输入框）；
+      // 否则从剪贴板提取图片并加入参考图
+      document.addEventListener('paste', (e) => {
+        const ae = document.activeElement;
+        const isEditable = ae && (
+          ae.tagName === 'TEXTAREA' ||
+          (ae.tagName === 'INPUT' && /^(text|search|url|email|password|tel|number)$/i.test(ae.type || 'text')) ||
+          ae.isContentEditable
+        );
+        if (isEditable) return;
+
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        const files = [];
+        for (const it of items) {
+          if (it.kind === 'file' && it.type && it.type.startsWith('image/')) {
+            const f = it.getAsFile();
+            if (f) files.push(f);
+          }
+        }
+        if (files.length === 0) return;
+
+        e.preventDefault();
+        handleFiles(files);
+        msg(`已从剪贴板粘贴 ${files.length} 张图片`);
+      });
+
       async function handleFiles(files) {
         const list = Array.from(files).filter(f => f.type.startsWith('image/'));
         if (!list.length) return;
