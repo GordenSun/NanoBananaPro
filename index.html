@@ -836,7 +836,7 @@
           <option value="nano-banana-pro" selected>Banana Pro(每次180积分)</option>
           <option value="nano-banana-pro-vt">Banana Pro备用(每次180积分)</option>
           <option value="nano-banana-2">Banana 2(每次120积分)</option>
-          <option value="gpt-image-2">GPT Image 2(每次60积分)</option>
+          <option value="gpt-image-2.5">GPT Image 2(每次60积分)</option>
           <option value="gpt-image-2-vip">4K版 GPT Image 2(每次200积分)</option>
         </select>
       </div>
@@ -875,7 +875,7 @@
       </div>
 
       <div class="key-section">
-        <div class="key-label">第3步：输入Key (必填，联系作者微信 <b>duge360</b> 购买，GPT-Image-2 0.1元/次，价格可能变动)</div>
+        <div class="key-label">第3步：输入Key (必填，联系作者微信 <b>duge360</b> 购买，GPT-Image-2.5 0.1元/次，价格可能变动)</div>
         <div class="key-input-row">
           <input type="text" id="userKey" placeholder="sk-..." style="height:34px;">
           <button class="btn-sm" id="saveKey">保存</button>
@@ -936,7 +936,7 @@
       // 🔴 🔴 🔴 已配置为您的公开域名 🔴 🔴 🔴
       const PUBLIC_R2_DOMAIN = 'https://cdn.gordensun.com/bananaproimage';
 
-      // API 端点 (nano-banana 系列 与 gpt-image-2 使用不同接口)
+      // API 端点 (nano-banana 系列 与 gpt-image-2.5 使用不同接口)
       const ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/nano-banana';
       const GPT_IMAGE_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/completions';
       const RESULT_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/result';
@@ -1042,7 +1042,7 @@
 
       function updateSizeAvailability() {
         const model = ui.model.value;
-        const isGptImage = model === 'gpt-image-2';
+        const isGptImage = model === 'gpt-image-2.5';
         const isGptImageVip = model === 'gpt-image-2-vip';
         if (isGptImage) {
           ui.size.value = '1K';
@@ -1512,7 +1512,7 @@
 
         try {
           const isGptImageVip = model === 'gpt-image-2-vip';
-          const isGptImage = model === 'gpt-image-2' || isGptImageVip;
+          const isGptImage = model === 'gpt-image-2.5' || isGptImageVip;
 
           let gptImageSize = ui.ratio.value;
           if (isGptImageVip) {
