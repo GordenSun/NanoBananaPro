@@ -6,7 +6,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <title>Nano Banana Pro · Art Edition</title>
+  <title>Nano Banana Pro · 新接口版</title>
   <style>
     :root {
       /* 修改：背景色稍微调亮，更柔和 */
@@ -837,7 +837,9 @@
           <option value="nano-banana-pro-vt">Banana Pro备用(每次180积分)</option>
           <option value="nano-banana-2">Banana 2(每次120积分)</option>
           <option value="gpt-image-2.5">GPT Image 2.5(每次60积分)</option>
-          <option value="gpt-image-2-vip">4K版 GPT Image 2(每次200积分)</option>
+          <option value="gpt-image-2-vip">4K GPT Image 2(每次200积分)</option>
+          <option value="gpt-image-2.5-flare">4K GPT Image 2.5 Flare(每次200积分)</option>
+          <option value="gpt-image-2.5-sunburst">4K GPT Image 2.5 Sunburst(每次240积分)</option>
         </select>
       </div>
       <div class="inline-row">
@@ -862,6 +864,14 @@
           <option value="1K">1K 标准</option>
           <option value="2K">2K 高清</option>
           <option value="4K" selected>4K 超清</option>
+        </select>
+      </div>
+
+      <div class="inline-row" id="backgroundRow" style="display:none;">
+        <label for="backgroundSelect">透明背景</label>
+        <select id="backgroundSelect">
+          <option value="" selected>否</option>
+          <option value="transparent">是(提示词里需写出“透明背景”)</option>
         </select>
       </div>
 
@@ -940,13 +950,21 @@
       const ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/nano-banana';
       const GPT_IMAGE_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/completions';
       const RESULT_ENDPOINT = 'https://grsai.dakka.com.cn/v1/draw/result';
+      const UNIFIED_ENDPOINT = 'https://grsai.dakka.com.cn/v1/api/generate';
+      const UNIFIED_RESULT_ENDPOINT = 'https://grsai.dakka.com.cn/v1/api/result';
+      const GPT_4K_MODELS = {
+        'gpt-image-2-vip': { quality: 'high', supportsTransparency: false },
+        'gpt-image-2.5-flare': { quality: 'high', supportsTransparency: true, api: 'unified' },
+        'gpt-image-2.5-sunburst': { quality: 'max', supportsTransparency: true, api: 'unified' }
+      };
 
       // 独立缓存 Keys (grsai_pro)
       const STORE_KEY = 'grsai_pro:key';
       const STORE_RATIO = 'grsai_pro:ratio';
       const STORE_SIZE = 'grsai_pro:size';
       const STORE_MODEL = 'grsai_pro:model';
-      const HISTORY_KEY = 'grsai_pro:history';
+      // 独立历史记录，避免旧版本通过旧接口刷新新接口任务。
+      const HISTORY_KEY = 'grsai_pro:history:new-api';
 
       // 轮询配置
       const POLL_INTERVAL = 5000; // 5秒
@@ -963,6 +981,8 @@
         model: el('modelSelect'),
         ratio: el('ratioSelect'),
         size: el('sizeSelect'),
+        backgroundRow: el('backgroundRow'),
+        background: el('backgroundSelect'),
         key: el('userKey'),
         saveKey: el('saveKey'),
         queryCredits: el('queryCredits'),
@@ -1036,6 +1056,7 @@
       ui.size.onchange = () => localStorage.setItem(STORE_SIZE, ui.size.value);
       ui.model.onchange = () => {
         localStorage.setItem(STORE_MODEL, ui.model.value);
+        ui.background.value = '';
         updateSizeAvailability();
         updateRatioAvailability(true);
       };
@@ -1043,7 +1064,10 @@
       function updateSizeAvailability() {
         const model = ui.model.value;
         const isGptImage = model === 'gpt-image-2.5';
-        const isGptImageVip = model === 'gpt-image-2-vip';
+        const isGptImageVip = Boolean(GPT_4K_MODELS[model]);
+        const supportsTransparency = Boolean(GPT_4K_MODELS[model]?.supportsTransparency);
+        ui.backgroundRow.style.display = supportsTransparency ? '' : 'none';
+        ui.background.disabled = !supportsTransparency;
         if (isGptImage) {
           ui.size.value = '1K';
         } else if (isGptImageVip) {
@@ -1058,9 +1082,9 @@
       }
       updateSizeAvailability();
 
-      // VIP 模型下控制 auto 选项可见性：无参考图时隐藏 auto，有参考图时可选
+      // 固定 4K 模型：无参考图时隐藏 auto，有参考图时可选
       function updateRatioAvailability(switchToAuto = false) {
-        const isGptImageVip = ui.model.value === 'gpt-image-2-vip';
+        const isGptImageVip = Boolean(GPT_4K_MODELS[ui.model.value]);
         const hasRefImage = refImages.length > 0;
         const autoOption = ui.ratio.querySelector('option[value="auto"]');
         if (!autoOption) return;
@@ -1261,7 +1285,7 @@
         }
       }
 
-      function addHistoryItem(taskId, status = 'pending', imageUrls = [], prompt = '') {
+      function addHistoryItem(taskId, status = 'pending', imageUrls = [], prompt = '', api) {
         const history = loadHistory();
         const existingIndex = history.findIndex(h => h.taskId === taskId);
         const existing = existingIndex >= 0 ? history[existingIndex] : null;
@@ -1272,6 +1296,7 @@
 
         const item = {
           taskId,
+          api: api || existing?.api || 'legacy',
           status,
           imageUrls: finalImageUrls,
           prompt: finalPrompt,
@@ -1415,14 +1440,38 @@
       };
 
       // ====== 异步任务轮询 ======
-      async function pollTaskStatus(taskId, key, maxAttempts = MAX_POLL_ATTEMPTS, silent = false) {
+      function unifiedTaskResult(task, prompt = '') {
+        if (!task || typeof task.id !== 'string') return null;
+        if (task.status === 'succeeded') {
+          const urls = (task.results || []).map(r => r.url).filter(Boolean);
+          addHistoryItem(task.id, urls.length ? 'completed' : 'rejected', urls, prompt, 'unified');
+          return { success: true, urls, rejected: !urls.length };
+        }
+        if (task.status === 'violation') {
+          addHistoryItem(task.id, 'rejected', [], prompt, 'unified');
+          return { success: false, rejected: true, urls: [] };
+        }
+        if (task.status === 'failed') {
+          addHistoryItem(task.id, 'failed', [], prompt, 'unified');
+          return { success: false, failed: true, reason: task.error || '生成失败', urls: [] };
+        }
+        return null;
+      }
+
+      async function pollTaskStatus(taskId, key, maxAttempts = MAX_POLL_ATTEMPTS, silent = false, api) {
+        const useUnified = (api || loadHistory().find(item => item.taskId === taskId)?.api) === 'unified';
         let attempts = 0;
 
         while (attempts < maxAttempts) {
           attempts++;
 
           try {
-            const res = await fetch(RESULT_ENDPOINT, {
+            const res = await fetch(useUnified
+              ? `${UNIFIED_RESULT_ENDPOINT}?id=${encodeURIComponent(taskId)}`
+              : RESULT_ENDPOINT, useUnified ? {
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + key }
+            } : {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1430,6 +1479,22 @@
               },
               body: JSON.stringify({ id: taskId })
             });
+
+            if (useUnified) {
+              const task = await res.json();
+              if (task.id && task.id !== taskId) throw new Error('任务查询返回ID不匹配');
+              // 新接口的 failed / violation 也可能以 HTTP 400 返回。
+              const result = unifiedTaskResult(task);
+              if (result) return result;
+              if (!res.ok) throw new Error(task.error || task.msg || `HTTP ${res.status}`);
+              if (task.id !== taskId || task.status !== 'running') {
+                throw new Error(task.error || '任务查询返回格式异常');
+              }
+              addHistoryItem(taskId, 'pending', [], '', 'unified');
+              if (!silent) msg(`生成中... ${task.progress || 0}% (${attempts}/${maxAttempts})`);
+              if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+              continue;
+            }
 
             if (!res.ok) {
               let errStr = `Error ${res.status}`;
@@ -1492,6 +1557,9 @@
           }
         }
 
+        // 历史记录的单次刷新仍在运行时，保留 pending 状态。
+        if (useUnified && silent) return { success: false, urls: [] };
+
         // 本地轮询超时
         addHistoryItem(taskId, 'timeout', []);
         if (!silent) throw new Error('轮询超时，请稍后在历史记录中刷新');
@@ -1503,6 +1571,9 @@
         const prompt = ui.prompt.value.trim();
         const key = ui.key.value.trim();
         const model = ui.model.value;
+        const modelConfig = GPT_4K_MODELS[model];
+        const useUnified = modelConfig?.api === 'unified';
+        const background = modelConfig?.supportsTransparency ? ui.background.value : '';
 
         if (!prompt) return msg('请输入一些描述...', true);
         if (!key) return msg('请填写 Key', true);
@@ -1511,7 +1582,7 @@
         msg('正在提交生成任务...');
 
         try {
-          const isGptImageVip = model === 'gpt-image-2-vip';
+          const isGptImageVip = Boolean(modelConfig);
           const isGptImage = model === 'gpt-image-2.5' || isGptImageVip;
 
           let gptImageSize = ui.ratio.value;
@@ -1545,15 +1616,23 @@
             }
           }
 
-          const payload = isGptImage
+          const payload = useUnified ? {
+            model,
+            prompt,
+            images: refImages.slice(),
+            aspectRatio: compute4KSize(gptImageSize),
+            quality: modelConfig.quality,
+            background: background || undefined,
+            replyType: 'async'
+          } : isGptImage
             ? (isGptImageVip
                 ? {
                     model: model,
                     prompt: prompt,
                     aspectRatio: compute4KSize(gptImageSize),
-                    // size: compute4KSize(gptImageSize),
                     variants: 1,
-                    quality: 'high',
+                    quality: modelConfig.quality,
+                    background: background || undefined,
                     urls: refImages.length ? refImages : undefined,
                     webHook: "-1",
                     shutProgress: true
@@ -1577,18 +1656,45 @@
                 shutProgress: true
               };
 
-          const endpoint = isGptImage ? GPT_IMAGE_ENDPOINT : ENDPOINT;
+          const endpoint = useUnified ? UNIFIED_ENDPOINT : (isGptImage ? GPT_IMAGE_ENDPOINT : ENDPOINT);
 
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + key,
-              'oss-id': '692b1ce0469719c8c4c5af05',
-              'oss-path': 'bananaproimage'
+              ...(!useUnified ? {
+                'oss-id': '692b1ce0469719c8c4c5af05',
+                'oss-path': 'bananaproimage'
+              } : {})
             },
             body: JSON.stringify(payload)
           });
+
+          if (useUnified) {
+            const task = await res.json();
+            let result = unifiedTaskResult(task, prompt);
+            if (!result) {
+              if (!res.ok) throw new Error(task.error || task.msg || `HTTP ${res.status}`);
+              if (typeof task.id !== 'string' || !task.id || task.status !== 'running') {
+                throw new Error(task.error || '未返回有效的任务ID或状态');
+              }
+              addHistoryItem(task.id, 'pending', [], prompt, 'unified');
+              msg(`任务已提交，正在等待生成结果... (Task ID: ${task.id.slice(0, 8)}...)`);
+              result = await pollTaskStatus(task.id, key, MAX_POLL_ATTEMPTS, false, 'unified');
+            }
+            if (result.rejected) {
+              msg('内容审核未通过，请修改描述后重试', true);
+            } else if (result.failed) {
+              msg(`生成失败: ${result.reason}`, true);
+            } else if (result.success && result.urls.length) {
+              msg('创作完成');
+              addGalleryGroup(result.urls, prompt);
+            } else {
+              throw new Error('未返回有效图片');
+            }
+            return;
+          }
 
           if (!res.ok) {
             let errMessage = `HTTP ${res.status}`;
