@@ -840,6 +840,9 @@
           <option value="gpt-image-2-vip">4K GPT Image 2(每次200积分)</option>
           <option value="gpt-image-2.5-flare">4K GPT Image 2.5 Flare(每次200积分)</option>
           <option value="gpt-image-2.5-sunburst">4K GPT Image 2.5 Sunburst(每次240积分)</option>
+          <option value="gpt-image-2.6">GPT Image 2.6(每次60积分)</option>
+          <option value="gpt-image-2.6-flare">4K GPT Image 2.6 Flare(每次200积分)</option>
+          <option value="gpt-image-2.6-sunburst">4K GPT Image 2.6 Sunburst(每次240积分)</option>
         </select>
       </div>
       <div class="inline-row">
@@ -864,6 +867,15 @@
           <option value="1K">1K 标准</option>
           <option value="2K">2K 高清</option>
           <option value="4K" selected>4K 超清</option>
+        </select>
+      </div>
+
+      <div class="inline-row" id="formatRow" style="display:none;">
+        <label for="formatSelect">图片类型</label>
+        <select id="formatSelect">
+          <option value="png" selected>PNG 图片</option>
+          <option value="gif">GIF 动图</option>
+          <option value="svg">SVG 矢量图</option>
         </select>
       </div>
 
@@ -955,8 +967,15 @@
       const GPT_4K_MODELS = {
         'gpt-image-2-vip': { quality: 'high', supportsTransparency: false },
         'gpt-image-2.5-flare': { quality: 'high', supportsTransparency: true, api: 'unified' },
-        'gpt-image-2.5-sunburst': { quality: 'max', supportsTransparency: true, api: 'unified' }
+        'gpt-image-2.5-sunburst': { quality: 'max', supportsTransparency: true, api: 'unified' },
+        'gpt-image-2.6-flare': { quality: 'high', supportsTransparency: true, api: 'unified', formats: ['png', 'gif'] },
+        'gpt-image-2.6-sunburst': { quality: 'high', supportsTransparency: true, api: 'unified', formats: ['png', 'gif'] }
       };
+      const GPT_1K_MODELS = {
+        'gpt-image-2.5': {},
+        'gpt-image-2.6': { quality: 'auto', supportsTransparency: true, api: 'unified', formats: ['png', 'gif', 'svg'] }
+      };
+      const gptModelConfig = (model) => GPT_4K_MODELS[model] || GPT_1K_MODELS[model];
 
       // 独立缓存 Keys (grsai_pro)
       const STORE_KEY = 'grsai_pro:key';
@@ -983,6 +1002,8 @@
         size: el('sizeSelect'),
         backgroundRow: el('backgroundRow'),
         background: el('backgroundSelect'),
+        formatRow: el('formatRow'),
+        format: el('formatSelect'),
         key: el('userKey'),
         saveKey: el('saveKey'),
         queryCredits: el('queryCredits'),
@@ -1063,11 +1084,21 @@
 
       function updateSizeAvailability() {
         const model = ui.model.value;
-        const isGptImage = model === 'gpt-image-2.5';
+        const isGptImage = Boolean(GPT_1K_MODELS[model]);
         const isGptImageVip = Boolean(GPT_4K_MODELS[model]);
-        const supportsTransparency = Boolean(GPT_4K_MODELS[model]?.supportsTransparency);
+        const supportsTransparency = Boolean(gptModelConfig(model)?.supportsTransparency);
         ui.backgroundRow.style.display = supportsTransparency ? '' : 'none';
         ui.background.disabled = !supportsTransparency;
+        const formats = gptModelConfig(model)?.formats || [];
+        ui.formatRow.style.display = formats.length ? '' : 'none';
+        ui.format.disabled = !formats.length;
+        for (const opt of ui.format.options) {
+          const supported = formats.includes(opt.value);
+          opt.hidden = !supported;
+          opt.disabled = !supported;
+          opt.style.display = supported ? '' : 'none';
+        }
+        if (!formats.includes(ui.format.value)) ui.format.value = 'png';
         if (isGptImage) {
           ui.size.value = '1K';
         } else if (isGptImageVip) {
@@ -1571,9 +1602,10 @@
         const prompt = ui.prompt.value.trim();
         const key = ui.key.value.trim();
         const model = ui.model.value;
-        const modelConfig = GPT_4K_MODELS[model];
+        const modelConfig = gptModelConfig(model);
         const useUnified = modelConfig?.api === 'unified';
         const background = modelConfig?.supportsTransparency ? ui.background.value : '';
+        const outputFormat = modelConfig?.formats?.includes(ui.format.value) ? ui.format.value : '';
 
         if (!prompt) return msg('请输入一些描述...', true);
         if (!key) return msg('请填写 Key', true);
@@ -1582,8 +1614,8 @@
         msg('正在提交生成任务...');
 
         try {
-          const isGptImageVip = Boolean(modelConfig);
-          const isGptImage = model === 'gpt-image-2.5' || isGptImageVip;
+          const isGptImageVip = Boolean(GPT_4K_MODELS[model]);
+          const isGptImage = Boolean(modelConfig);
 
           let gptImageSize = ui.ratio.value;
           if (isGptImageVip) {
@@ -1607,7 +1639,7 @@
                 }
               }
             }
-          } else if (isGptImage && gptImageSize === 'auto' && refImages.length > 0) {
+          } else if (isGptImage && !useUnified && gptImageSize === 'auto' && refImages.length > 0) {
             try {
               const dims = await getImageDimensions(refImages[0]);
               gptImageSize = `${dims.width}:${dims.height}`;
@@ -1620,9 +1652,10 @@
             model,
             prompt,
             images: refImages.slice(),
-            aspectRatio: compute4KSize(gptImageSize),
+            aspectRatio: isGptImageVip ? compute4KSize(gptImageSize) : gptImageSize,
             quality: modelConfig.quality,
             background: background || undefined,
+            outputFormat: outputFormat || undefined,
             replyType: 'async'
           } : isGptImage
             ? (isGptImageVip
@@ -1947,6 +1980,9 @@
       });
 
       // 下载功能
+      const downloadExt = (url, mime = '') =>
+        (mime.match(/image\/(gif|svg)/i) || url.split(/[?#]/)[0].match(/\.(gif|svg)$/i))?.[1].toLowerCase() || 'png';
+
       window.download = async (url) => {
         msg('正在下载原图...');
         try {
@@ -1957,7 +1993,7 @@
 
           const a = document.createElement('a');
           a.href = blobUrl;
-          a.download = `art-${Date.now()}.png`;
+          a.download = `art-${Date.now()}.${downloadExt(url, blob.type)}`;
           document.body.appendChild(a);
           a.click();
           a.remove();
@@ -1969,7 +2005,7 @@
           const a = document.createElement('a');
           a.href = url;
           a.target = '_blank';
-          a.download = `art-${Date.now()}.png`;
+          a.download = `art-${Date.now()}.${downloadExt(url)}`;
           document.body.appendChild(a);
           a.click();
           a.remove();
